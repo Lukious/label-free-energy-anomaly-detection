@@ -12,17 +12,22 @@ Building Engineering* (Elsevier).
 
 A fully unsupervised pipeline that detects energy anomalies in commercial
 building electricity meters and quantifies the wasted energy (kWh) of each
-anomaly, without requiring any fault labels. The central experimental
-finding is that the performance earned by this pipeline comes from
-**calendar-conditional scoring with causal threshold calibration**, not
-from the Transformer backbone: an hour-of-week profile baseline with the
-same scoring sits in statistical parity with the learned model (TOST
-inconclusive at ±0.03 F1), and a two-stage waste evaluation shows no
-estimator dominates quantification --- the profile baseline is the most
-accurate end-to-end. The paper is therefore framed as a causally
-calibrated evaluation methodology, with calendar-conditional scoring as
-its methodological core. Hour-of-week (day-type aware) conditioning lifts
-schedule-fault recall from 0.45 to 0.60.
+anomaly, without requiring any fault labels. A pre-registered complete-factorial
+experiment (backbone × scoring, Holm-corrected building-level paired
+tests) separates the two components: the learned backbone adds **+0.040
+F1 over an hour-of-week profile under identical scoring** (0.674 vs
+0.634, Holm-adjusted p = 0.003; TOST rules out equivalence at ±0.03),
+while **calendar-conditional scoring adds +0.06 to +0.09 F1 within each
+backbone** (profile 0.55 → 0.63, PatchTST 0.60 → 0.66) and hour-of-week
+conditioning lifts schedule-fault recall from 0.45 to 0.60. Reported
+honestly: the ranking **inverts under overlap-based range-F1** (profile
+0.411 vs Transformer 0.402), the profile family pays a 2.8–4.0% false
+alarm rate against 1.4–1.8%, and a six-hour extend-until-recovery window
+rule moves the learned detector's operational waste bias from **−51% to
++1%** (near-unbiased) where the dense profile baseline should be left
+unextended. The paper is framed as a causally calibrated evaluation
+methodology with calendar-conditional scoring as its methodological
+core.
 
 Key components:
 
@@ -92,8 +97,12 @@ python scripts/run_final.py        # synthetic 5-seed main results
 python scripts/run_realdata.py     # BDG2 3-seed measured results
 python scripts/run_revision.py     # causal/fair-tuning/ablation suite
 python scripts/run_round2.py       # two-stage waste, TOST, HoW variant, leakage
-python scripts/run_round2_synthetic.py    # synthetic re-run under new protocol
-python scripts/make_figures_revision.py   # regenerate publication figures
+python scripts/run_round3.py       # pre-registered 2x2 factorial + Holm/TOST,
+                                   # range-F1, prescription, TOWT diagnosis
+python scripts/run_round3_lead.py  # LEAD 1.0-small out-of-domain check
+python scripts/run_round3_synthetic_types.py  # synthetic type x severity, new protocol (incl. LSTM-AE, TOWT)
+python scripts/run_round2_synthetic.py  # synthetic re-run under new protocol
+python scripts/make_all_figures.py       # regenerate ALL figures from results CSVs
 ```
 
 All scripts are seeded; results in `results/` were produced with the
@@ -106,22 +115,38 @@ scikit-learn, scipy, matplotlib, torch (CPU or MPS).
 
 ## Results snapshot (BDG2, 41 measured buildings, 3 seeds)
 
-| Model | Precision | Recall | F1 | FAR |
-|---|---|---|---|---|
-| PatchTST-SSL + calendar-conditional scoring | 0.64 | 0.74 | 0.66 ± 0.01 | 1.4% |
-| — hour-of-week conditioning variant | 0.61 | 0.83 | 0.67 ± 0.02 | 1.8% |
-| Hour-of-week profile + robust-z (no learning) | 0.57 | 0.83 | 0.65 ± 0.03 | 2.8% |
-| LSTM-AE (tuned) | 0.78 | 0.49 | 0.58 ± 0.01 | 9.0% |
-| TOWT regression as detector | 0.51 | 0.77 | 0.57 ± 0.03 | 3.4% |
-| OC-SVM (tuned) | 0.42 | 0.80 | 0.52 ± 0.06 | 6.1% |
+Pre-registered 2x2 (backbone x scoring), identical causal flagger:
 
-Building-level paired test vs the strongest baseline: +0.081 F1
-(p = 2.9e-04, bootstrap CI [+0.04, +0.12]). Transductive normalization
-inflates F1 by +0.009 on matched conditions. Two-stage waste evaluation
-(oracle windows / own flags with exact kWh decomposition):
-oracle clip bias +28% (PatchTST) / +38% (profile) / +42% (TOWT);
-operational total bias −63% / −40% / −54% --- detection recall, not
-estimator sophistication, is the binding constraint for kWh accuracy.
+| Configuration | Precision | Recall | Event F1 | Range F1 | FAR |
+|---|---|---|---|---|---|
+| PatchTST + HoW-conditional scoring | 0.61 | 0.83 | **0.674 ± 0.02** | 0.402 | 1.8% |
+| PatchTST + HoD-conditional scoring | 0.64 | 0.74 | 0.659 ± 0.01 | 0.389 | 1.4% |
+| HOW profile + HoW-conditional scoring | 0.56 | 0.82 | 0.634 ± 0.02 | 0.411 | 3.0% |
+| HOW profile + global MAD | 0.47 | 0.78 | 0.548 ± 0.03 | 0.359 | 4.0% |
+| TOWT + HoW-conditional scoring | 0.59 | 0.79 | 0.644 ± 0.01 | 0.401 | 2.1% |
+| LSTM-AE (tuned) | 0.71 | 0.43 | 0.511 ± 0.03 | 0.251 | 9.0% |
+
+Building-level paired (Holm-corrected): backbone effect under identical
+scoring +0.040 (p = 0.0034, TOST rejects equivalence); scoring effect
+within the profile +0.085 (p < 1e-4); HoD->HoW within PatchTST +0.015
+(not significant). Note the honest range-F1 inversion: profile family
+0.411-0.413 > PatchTST(HoW) 0.402.
+
+Waste (operational, own flags): total bias -40% (profile) / -59% (PatchTST
+HoW) / -62% (PatchTST HoD). Level-bias hypothesis rejected (in-event
+residuals +1.8-2.0 sd for all backbones; target-only masking unchanged).
+Prescription: 6-hour extend-until-recovery window reconstruction moves
+PatchTST(HoD) from **-51.0% to +0.9%** (coverage 11% -> 25%); z12/CUSUM
+over-correct (+18%/+97%); the profile baseline is already closest to
+unbiased (-15%) and should not be extended.
+
+LEAD 1.0-small (200 labeled buildings, out-of-domain check): 2.2% of
+flagged hours coincide with labeled anomalies; 10.4% of labeled anomalous
+hours recovered --- an honest negative result, reported as a robustness
+check only.
+
+All figures are regenerated from the CSVs by
+`python scripts/make_all_figures.py` (dpi 300).
 
 ## License
 
