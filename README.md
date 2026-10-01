@@ -1,7 +1,7 @@
 # Label-Free Energy Anomaly Detection and Waste Quantification
 
-Code and results for **"Time-Conditional Multi-Scale Scoring for Label-Free
-Energy Anomaly Detection and Waste Quantification: A Causally Calibrated
+Code and results for **"Calendar-Conditional Scoring for Label-Free Energy
+Anomaly Detection and Waste Quantification: A Causally Calibrated
 Evaluation on 41 Measured Buildings"** (Su-Hwan Baek, Core Process
 Engineering Research Institute, POSCO HOLDINGS).
 
@@ -13,19 +13,22 @@ Building Engineering* (Elsevier).
 A fully unsupervised pipeline that detects energy anomalies in commercial
 building electricity meters and quantifies the wasted energy (kWh) of each
 anomaly, without requiring any fault labels. The central experimental
-finding is that the detection performance earned by this pipeline comes
-from **time-conditional multi-scale scoring with causal threshold
-calibration**, not from the Transformer backbone: a simple
-hour-of-week profile baseline with the same scoring reaches within 0.01 F1
-of the learned model, whereas classical unsupervised baselines
-(Isolation Forest, OC-SVM, autoencoders) lose false-alarm control on
-measured data.
+finding is that the performance earned by this pipeline comes from
+**calendar-conditional scoring with causal threshold calibration**, not
+from the Transformer backbone: an hour-of-week profile baseline with the
+same scoring sits in statistical parity with the learned model (TOST
+inconclusive at ±0.03 F1), and a two-stage waste evaluation shows no
+estimator dominates quantification --- the profile baseline is the most
+accurate end-to-end. The paper is therefore framed as a causally
+calibrated evaluation methodology, with calendar-conditional scoring as
+its methodological core. Hour-of-week (day-type aware) conditioning lifts
+schedule-fault recall from 0.45 to 0.60.
 
 Key components:
 
 - **PatchTST-SSL backbone** — masked-reconstruction Transformer producing
   point-scale residuals (channel-mixing variant)
-- **Time-conditional scoring** — hour-conditional robust-z normalization
+- **Calendar-conditional scoring** — hour-of-day / hour-of-week conditional robust-z normalization
   that removes the heteroscedastic schedule-transition noise that floods
   global-MAD baselines at night and in the evening
 - **Causal calibration** — normalization statistics frozen on the
@@ -88,6 +91,8 @@ python scripts/generate_data.py    # full synthetic dataset
 python scripts/run_final.py        # synthetic 5-seed main results
 python scripts/run_realdata.py     # BDG2 3-seed measured results
 python scripts/run_revision.py     # causal/fair-tuning/ablation suite
+python scripts/run_round2.py       # two-stage waste, TOST, HoW variant, leakage
+python scripts/run_round2_synthetic.py    # synthetic re-run under new protocol
 python scripts/make_figures_revision.py   # regenerate publication figures
 ```
 
@@ -101,15 +106,22 @@ scikit-learn, scipy, matplotlib, torch (CPU or MPS).
 
 ## Results snapshot (BDG2, 41 measured buildings, 3 seeds)
 
-| Model | F1 | FAR |
-|---|---|---|
-| PatchTST-SSL + time-conditional scoring | 0.66 ± 0.01 | 1.4% |
-| Hour-of-week profile + robust-z | 0.65 | — |
-| LSTM-AE (tuned) | 0.58 ± 0.01 | 9.0% |
-| OC-SVM (tuned) | 0.52 ± 0.06 | 6.1% |
+| Model | Precision | Recall | F1 | FAR |
+|---|---|---|---|---|
+| PatchTST-SSL + calendar-conditional scoring | 0.64 | 0.74 | 0.66 ± 0.01 | 1.4% |
+| — hour-of-week conditioning variant | 0.61 | 0.83 | 0.67 ± 0.02 | 1.8% |
+| Hour-of-week profile + robust-z (no learning) | 0.57 | 0.83 | 0.65 ± 0.03 | 2.8% |
+| LSTM-AE (tuned) | 0.78 | 0.49 | 0.58 ± 0.01 | 9.0% |
+| TOWT regression as detector | 0.51 | 0.77 | 0.57 ± 0.03 | 3.4% |
+| OC-SVM (tuned) | 0.42 | 0.80 | 0.52 ± 0.06 | 6.1% |
 
 Building-level paired test vs the strongest baseline: +0.081 F1
-(p = 2.9e-04, bootstrap CI [+0.04, +0.12]).
+(p = 2.9e-04, bootstrap CI [+0.04, +0.12]). Transductive normalization
+inflates F1 by +0.009 on matched conditions. Two-stage waste evaluation
+(oracle windows / own flags with exact kWh decomposition):
+oracle clip bias +28% (PatchTST) / +38% (profile) / +42% (TOWT);
+operational total bias −63% / −40% / −54% --- detection recall, not
+estimator sophistication, is the binding constraint for kWh accuracy.
 
 ## License
 
@@ -118,8 +130,8 @@ MIT License — see [LICENSE](LICENSE).
 ## Citation
 
 ```bibtex
-@article{baek2026timeconditional,
-  title   = {Time-Conditional Multi-Scale Scoring for Label-Free Energy
+@article{baek2026calendarconditional,
+  title   = {Calendar-Conditional Scoring for Label-Free Energy
              Anomaly Detection and Waste Quantification: A Causally
              Calibrated Evaluation on 41 Measured Buildings},
   author  = {Baek, Su-Hwan},
