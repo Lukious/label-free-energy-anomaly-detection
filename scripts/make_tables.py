@@ -28,9 +28,11 @@ NICE = {
     "HOW-profile(global-MAD)": r"\quad HOW-profile (global-MAD)",
     "TOWT(HoW-cond)": r"TOWT $+$ HoW-cond.\ scoring",
     "HOW-profile+z(slot)": r"HOW-profile $+$ $z$ (slot-level variant)",
-    "IsolationForest(t)": r"Isolation Forest (transductive)",
-    "OC-SVM(t)": r"OC-SVM (transductive)",
-    "Autoencoder(t)": r"Autoencoder (transductive)",
+    # "(t)" = tuned on the same validation injection events; all baselines
+    # are flagged by the same causal (trailing) operator -- NOT transductive.
+    "IsolationForest(t)": r"Isolation Forest (tuned)",
+    "OC-SVM(t)": r"OC-SVM (tuned)",
+    "Autoencoder(t)": r"Autoencoder (tuned)",
     "LSTM-AE(t)": r"LSTM-AE (own tuned flagger)",
 }
 
@@ -100,15 +102,17 @@ def table_waste_ops():
         miss=("missed_kwh", "sum"),
         n=("building_id", lambda x: len(set(x)))).reset_index()
     g["bias"] = (g["est"] - g["true"]) / g["true"]
-    lines = [r"\begin{tabular}{lrrrrr}", r"\toprule",
-             r"Model & total bias & matched err (kWh) & false add (kWh) & missed (kWh) & $n$ bldgs \\",
+    g["gross"] = g[["matched", "fadd", "miss"]].abs().sum(axis=1)
+    lines = [r"\begin{tabular}{lrrrrrr}", r"\toprule",
+             r"Model & total bias & matched err (kWh) & false add (kWh) & missed (kWh) & gross err (kWh) & $n$ bldgs \\",
              r"\midrule"]
     for _, r in g.iterrows():
         lines.append(f"{NICE.get(r['model'], r['model'])} & {r['bias']:+.1%}".replace("%", r"\%") + " & "
                      f"{r['matched']:+.0f} & {r['fadd']:+.0f} & "
-                     f"$-${r['miss']:.0f} & {int(r['n'])} \\\\")
+                     f"$-${r['miss']:.0f} & {r['gross']:.0f} & {int(r['n'])} \\\\")
     lines += [r"\bottomrule", r"\end{tabular}",
-              "%% Eq.(6): est-true == matched_err + false_add - missed (kWh)."]
+              "%% Eq.(6): est-true == matched_err + false_add - missed (kWh).",
+              "%% gross = |matched| + |false add| + |missed| (no cancellation)."]
     open(os.path.join(TAB, "table_waste_ops.tex"), "w").write("\n".join(lines))
 
 
@@ -116,20 +120,23 @@ def table_prescription():
     d = load("prescription.csv")
     ch = d[d["chosen"]]
     # per building |err| quartiles for the chosen rule (ours = PatchTST HoW)
-    lines = [r"\begin{tabular}{lrrrrr}", r"\toprule",
-             r"Model (rule chosen on validation) & bias & matched err & false add & missed & window cov. \\",
+    lines = [r"\begin{tabular}{lrrrrrr}", r"\toprule",
+             r"Model (rule chosen on validation) & bias & matched err & false add & missed & gross err & window cov. \\",
              r"\midrule"]
     for m, g in ch.groupby("model"):
         rule = g["mode"].iloc[0]
         tot_t, tot_e = g["true_kwh"].sum(), g["est_kwh"].sum()
+        gross = g[["matched_err_kwh", "false_add_kwh", "missed_kwh"]].abs().sum().sum()
         lines.append(
             f"{NICE.get(m, m)} [{rule}] & " + f"{(tot_e - tot_t) / tot_t:+.1%}".replace("%", r"\%") + " & "
             f"{g['matched_err_kwh'].sum():+.0f} & {g['false_add_kwh'].sum():+.0f} & "
-            f"$-${g['missed_kwh'].sum():.0f} & "
+            f"$-${g['missed_kwh'].sum():.0f} & {gross:.0f} & "
             f"{g['window_cov'].mean():.1%}".replace("%", r"\%") + " \\\\")
     lines += [r"\bottomrule", r"\end{tabular}",
               "%% Post-extension Eq.(6) decomposition; rule selected on "
-              "validation injection events, never on test."]
+              "validation injection events, never on test.",
+              "%% gross = |matched| + |false add| + |missed|: compare with the",
+              "%% same column of Table waste-ops (before extension)."]
     open(os.path.join(TAB, "table_prescription.tex"), "w").write("\n".join(lines))
 
 
@@ -150,6 +157,8 @@ def table_levelbias():
             "fullmask_simple": g["patchtst_fullmask_mean"].mean(),
             "fullmask_kwh": np.average(g["patchtst_fullmask_mean"],
                                        weights=g["true_kwh"]),
+            "how_simple": g["how_mean"].mean(),
+            "how_kwh": np.average(g["how_mean"], weights=g["true_kwh"]),
         }
     lines = [r"\begin{tabular}{lrr}", r"\toprule",
              r"Residual & mean (event-simple) & mean (kWh-weighted) \\",
@@ -160,6 +169,9 @@ def table_levelbias():
     for t, r in per_type.items():
         lines.append(f"\\quad full-window mask, {t} & {r['fullmask_simple']:+.3f} $\\sigma$ & "
                      f"{r['fullmask_kwh']:+.3f} $\\sigma$ \\\\")
+    for t, r in per_type.items():
+        lines.append(f"\\quad HOW profile, {t} & {r['how_simple']:+.3f} $\\sigma$ & "
+                     f"{r['how_kwh']:+.3f} $\\sigma$ \\\\")
     lines += [r"\bottomrule", r"\end{tabular}"]
     open(os.path.join(TAB, "table_levelbias.tex"), "w").write("\n".join(lines))
 
@@ -256,6 +268,27 @@ def write_numbers():
                  / g["true_kwh"].sum()))
     pb = pb.abs().dropna()
 
+    # gross-error (sum of |decomposition terms|) before/after extension, MWh
+    def gross(d):
+        g = d.groupby("model")[["matched_err_kwh", "false_add_kwh",
+                                "missed_kwh"]].sum()
+        return (g.abs().sum(axis=1) / 1e6).to_dict()
+
+    gross_before = gross(ops)
+    gross_after = gross(ch[ch["chosen"]])
+
+    # per-building |bias| quartiles BEFORE extension (ours)
+    ops_pt = ops[ops["model"] == "PatchTST-SSL(HoW-cond)"]
+    pb0 = (ops_pt.groupby("building_id")
+           .apply(lambda g: (g["est_kwh"].sum() - g["true_kwh"].sum())
+                  / g["true_kwh"].sum()))
+    pb0 = pb0.abs().dropna()
+
+    # oracle per-event median |err| (clip form), per model
+    orc_med = (orc.assign(e=(orc["clip_kwh"] - orc["true_kwh"]).abs()
+                          / orc["true_kwh"])
+               .groupby("model")["e"].median()).to_dict()
+
     caus = det[det["model"] == "PatchTST-SSL(HoD-cond)"].groupby("building_id")["f1"].mean()
     trd = leak.groupby("building_id")["f1"].mean()
     common = caus.index.intersection(trd.index)
@@ -311,6 +344,8 @@ def write_numbers():
         "ErrQMed": float(pb.median()),
         "ErrQThree": float(pb.quantile(0.75)),
         "OracleSignedBiasPatchTST": float(orc_signed.get("PatchTST-SSL(HoW-cond)", np.nan)),
+        # percent macros rounded in Python so text and tables cannot diverge
+        "OracleClipBiasPatchTSTPct": round(100 * float(orc_clip.get("PatchTST-SSL(HoW-cond)", np.nan)), 1),
         "OracleClipBiasPatchTST": float(orc_clip.get("PatchTST-SSL(HoW-cond)", np.nan)),
         "OracleFloorBiasPatchTST": float(orc_floor.get("PatchTST-SSL(HoW-cond)", np.nan)),
         "OracleSignedBiasHOW": float(orc_signed.get("HOW-profile(HoW-cond)", np.nan)),
@@ -326,6 +361,31 @@ def write_numbers():
         "LevBiasSpike": float(lev[lev["type"] == "spike"]["patchtst_fullmask_mean"].mean()),
         "LevBiasDrift": float(lev[lev["type"] == "drift"]["patchtst_fullmask_mean"].mean()),
         "LevBiasSchedule": float(lev[lev["type"] == "schedule"]["patchtst_fullmask_mean"].mean()),
+        # E3: gross error before/after window extension (TWh-scale kWh -> M)
+        "GrossBeforePatchTST": float(gross_before["PatchTST-SSL(HoW-cond)"]),
+        "GrossAfterPatchTST": float(gross_after["PatchTST-SSL(HoW-cond)"]),
+        "GrossReductionPct": float(100 * (1 - gross_after["PatchTST-SSL(HoW-cond)"]
+                                          / gross_before["PatchTST-SSL(HoW-cond)"])),
+        "GrossBeforeHOW": float(gross_before["HOW-profile(HoW-cond)"]),
+        "GrossAfterHOW": float(gross_after["HOW-profile(HoW-cond)"]),
+        "GrossBeforeTOWT": float(gross_before["TOWT(HoW-cond)"]),
+        "GrossAfterTOWT": float(gross_after["TOWT(HoW-cond)"]),
+        # per-building |bias| quartiles BEFORE extension (ours)
+        "ErrQOneBefore": float(pb0.quantile(0.25)),
+        "ErrQMedBefore": float(pb0.median()),
+        "ErrQThreeBefore": float(pb0.quantile(0.75)),
+        # E4: HOW-profile per-type residual levels (sigma)
+        "LevBiasHOWSpike": float(lev[lev["type"] == "spike"]["how_mean"].mean()),
+        "LevBiasHOWDrift": float(lev[lev["type"] == "drift"]["how_mean"].mean()),
+        "LevBiasHOWSchedule": float(lev[lev["type"] == "schedule"]["how_mean"].mean()),
+        # E4: kWh-weighted schedule residual (learned backbone)
+        "LevBiasScheduleKwh": float(np.average(
+            lev[lev["type"] == "schedule"]["patchtst_fullmask_mean"],
+            weights=lev[lev["type"] == "schedule"]["true_kwh"])),
+        # oracle per-event median |err| (clip), for Limitations
+        "OracleMedErrPatchTST": float(orc_med.get("PatchTST-SSL(HoW-cond)", np.nan)),
+        "OracleMedErrHOW": float(orc_med.get("HOW-profile(HoW-cond)", np.nan)),
+        "OracleMedErrTOWT": float(orc_med.get("TOWT(HoW-cond)", np.nan)),
         # LEAD appendix
         "LeadMedianDur": float(lead["duration_h"].median()),
         "LeadQ九十Dur": float(lead["duration_h"].quantile(0.90)),

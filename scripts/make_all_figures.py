@@ -49,16 +49,18 @@ def fig1():
             axes, [("f1", "f1s", "Event-level F1"),
                    ("rf1", "rf1s", "Range-based F1"),
                    ("far", None, "False-alarm rate (%)")]):
-        o = order if col != "far" else g.sort_values("far")
+        o = order if col != "far" else g.assign(_f=g["far"] * 100).sort_values("_f")
         colors = [C2X2.get(m, "#999999") for m in o["model"]]
         y = np.arange(len(o))[::-1]
-        ax.barh(y, o[col], xerr=(o[err] if err else None),
-                color=colors, height=0.62)
+        vals = o["_f"] if col == "far" else o[col]
+        errs = None if (err is None or col == "far") else o[err]
+        ax.barh(y, vals, xerr=errs, color=colors, height=0.62)
         ax.set_yticks(y)
-        ax.set_yticklabels(o["model"], fontsize=6.5)
-        ax.set_title(ttl, fontsize=8)
+        ax.set_yticklabels(o["model"], fontsize=7.5)
+        ax.tick_params(axis="x", labelsize=8)
+        ax.set_title(ttl, fontsize=9)
         if col == "far":
-            ax.set_xlabel("% of normal hours")
+            ax.set_xlabel("false-alarm rate (% of normal hours)", fontsize=8)
         else:
             ax.set_xlim(0, max(0.75, o[col].max() * 1.15))
     axes[0].set_xlabel("building macro-avg F1")
