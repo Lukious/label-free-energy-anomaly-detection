@@ -12,22 +12,29 @@ Building Engineering* (Elsevier).
 
 A fully unsupervised pipeline that detects energy anomalies in commercial
 building electricity meters and quantifies the wasted energy (kWh) of each
-anomaly, without requiring any fault labels. A pre-registered complete-factorial
-experiment (backbone × scoring, Holm-corrected building-level paired
-tests) separates the two components: the learned backbone adds **+0.040
-F1 over an hour-of-week profile under identical scoring** (0.674 vs
-0.634, Holm-adjusted p = 0.003; TOST rules out equivalence at ±0.03),
-while **calendar-conditional scoring adds +0.06 to +0.09 F1 within each
+anomaly, without requiring any fault labels. A complete-factorial
+experiment with pre-specified contrasts (backbone × scoring, Holm-corrected
+building-level paired tests) separates the two components: the learned
+backbone adds **+0.040 F1 over an hour-of-week profile under identical
+scoring** (0.674 vs 0.634, Holm-adjusted p = 0.003). The 90% CI of that
+difference, [+0.021, +0.059], **contains values inside the pre-specified
+±0.03 practical margin**, so equivalence is not established and whether
+the difference *exceeds* the margin is undetermined (TOST p = 0.80).
+**Calendar-conditional scoring adds +0.06 to +0.09 F1 within each
 backbone** (profile 0.55 → 0.63, PatchTST 0.60 → 0.66) and hour-of-week
 conditioning lifts schedule-fault recall from 0.45 to 0.60. Reported
-honestly: the ranking **inverts under overlap-based range-F1** (profile
-0.411 vs Transformer 0.402), the profile family pays a 2.8–4.0% false
-alarm rate against 1.4–1.8%, and a six-hour extend-until-recovery window
-rule moves the learned detector's operational waste bias from **−51% to
-+1%** (near-unbiased) where the dense profile baseline should be left
-unextended. The paper is framed as a causally calibrated evaluation
-methodology with calendar-conditional scoring as its methodological
-core.
+honestly: the event-F1 winner is **not separated from the profile family
+under overlap-based range-F1** (0.402 vs 0.411, Δ ≤ 0.011, untested), the
+profile family pays a 2.8–4.0% false alarm rate against 1.4–1.8%, and a
+window-extension rule selected on *validation* injections (12-hour
+extend-until-recovery for the learned detector) moves its operational
+waste bias from **−59.1% to −0.1%** (near-unbiased; missed kWh unchanged
+by construction, matched coverage 15% → 44%) where the dense profile
+baseline should be left unextended. The paper is framed as a causally
+calibrated evaluation methodology with calendar-conditional scoring as
+its methodological core. Every table, figure, and in-text number is
+generated from one canonical run (`results/final_consolidated/`) by
+`scripts/make_tables.py` and `scripts/make_all_figures.py`.
 
 Key components:
 
@@ -91,6 +98,12 @@ python scripts/prepare_revision.py      # joins measured weather, splits
 python -m venv venv && source venv/bin/activate
 pip install -r requirements.txt
 
+python scripts/run_final_consolidated.py all   # CANONICAL single run:
+                                   # all 2x2 + baselines + waste/prescription
+                                   # + leakage + LEAD + synthetic -> master
+                                   # CSVs in results/final_consolidated/
+python scripts/make_tables.py      # LaTeX table fragments + numbers.tex macros
+python scripts/make_all_figures.py # ALL figures from the master CSVs (dpi 300)
 python scripts/run_smoke.py        # quick synthetic demo (~3 min)
 python scripts/generate_data.py    # full synthetic dataset
 python scripts/run_final.py        # synthetic 5-seed main results
@@ -126,19 +139,28 @@ Pre-registered 2x2 (backbone x scoring), identical causal flagger:
 | TOWT + HoW-conditional scoring | 0.59 | 0.79 | 0.644 ± 0.01 | 0.401 | 2.1% |
 | LSTM-AE (tuned) | 0.71 | 0.43 | 0.511 ± 0.03 | 0.251 | 9.0% |
 
-Building-level paired (Holm-corrected): backbone effect under identical
-scoring +0.040 (p = 0.0034, TOST rejects equivalence); scoring effect
-within the profile +0.085 (p < 1e-4); HoD->HoW within PatchTST +0.015
-(not significant). Note the honest range-F1 inversion: profile family
-0.411-0.413 > PatchTST(HoW) 0.402.
+Building-level paired (Holm-corrected, family of six pre-specified
+contrasts, n = 40 valid pairs): backbone effect under identical scoring
++0.040 (p = 0.0034; TOST does not establish equivalence and the 90% CI
+[+0.021, +0.059] contains in-margin values, so margin-excess is
+undetermined); scoring effect within the profile +0.085 (p < 1e-4);
+HoD->HoW within PatchTST +0.015 (not significant). Under overlap-based
+range-F1 the top group (HOW+z 0.41, HOW(HoW) 0.41, PatchTST(HoW) 0.40)
+is not separated (differences <= 0.011, untested). Against the
+slot-level variant comparator the backbone difference is +0.029
+(CI [+0.008, +0.049]) --- both comparators are reported.
 
-Waste (operational, own flags): total bias -40% (profile) / -59% (PatchTST
-HoW) / -62% (PatchTST HoD). Level-bias hypothesis rejected (in-event
-residuals +1.8-2.0 sd for all backbones; target-only masking unchanged).
-Prescription: 6-hour extend-until-recovery window reconstruction moves
-PatchTST(HoD) from **-51.0% to +0.9%** (coverage 11% -> 25%); z12/CUSUM
-over-correct (+18%/+97%); the profile baseline is already closest to
-unbiased (-15%) and should not be extended.
+Waste (operational, own flags, kWh-weighted): total bias -40.1% (profile)
+/ -59.1% (PatchTST HoW) / -55.7% (TOWT). The signed-error structure
+reflects two weightings of type-dependent residual levels (spike
++3.28 sigma vs schedule -0.21 sigma per hour; kWh-weighted +1.41 sigma),
+not a counterfactual level bias. Prescription (rule chosen on validation
+injections, never on test): the 12-hour extend-until-recovery rule moves
+PatchTST(HoW) from **-59.1% to -0.1%** (matched error -1.41M -> -0.54M
+kWh, false-add +0.18M -> +0.75M kWh, missed kWh unchanged by
+construction; coverage 15% -> 44%); the 6-hour rule leaves TOWT at -4.4%;
+the profile baseline over-adds under any rule (+34.7%) and should be
+left unextended.
 
 LEAD 1.0-small (200 labeled buildings, out-of-domain check): 2.2% of
 flagged hours coincide with labeled anomalies; 10.4% of labeled anomalous
