@@ -1,5 +1,7 @@
 # Label-Free Energy Anomaly Detection on 41 BDG2 Buildings
 
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.23101493.svg)](https://doi.org/10.5281/zenodo.23101493)
+
 Code, building selection and result tables for the manuscript
 
 > **Calendar-Conditional Scoring Drives Label-Free Energy Anomaly Detection: A Leakage-Free Factorial Evaluation of Learned and Profile Backbones on 41 Measured Buildings**
@@ -79,4 +81,4 @@ MIT (see `LICENSE`). BDG2 and LEAD 1.0 are subject to their own licenses.
 
 ## Citation
 
-See `CITATION.cff`. The archived release of this repository has a Zenodo DOI, given in the badge and in the manuscript.
+See `CITATION.cff`. Release v1.0.0 (the version accompanying the submitted manuscript) is archived at Zenodo: doi:[10.5281/zenodo.23101493](https://doi.org/10.5281/zenodo.23101493). The concept DOI [10.5281/zenodo.23101492](https://doi.org/10.5281/zenodo.23101492) always resolves to the latest version.
