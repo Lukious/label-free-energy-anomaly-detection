@@ -1,0 +1,58 @@
+seed,model,cfg,val_f1
+123,IsolationForest(t),"{'n_estimators': 100, 'max_samples': 'auto'}",0.6625258799171843
+123,IsolationForest(t),"{'n_estimators': 100, 'max_samples': 256}",0.6625258799171843
+123,IsolationForest(t),"{'n_estimators': 100, 'max_samples': 0.5}",0.745393634840871
+123,IsolationForest(t),"{'n_estimators': 200, 'max_samples': 'auto'}",0.6708727655099895
+123,IsolationForest(t),"{'n_estimators': 200, 'max_samples': 256}",0.6708727655099895
+123,IsolationForest(t),"{'n_estimators': 200, 'max_samples': 0.5}",0.7524613220815753
+123,IsolationForest(t),"{'n_estimators': 400, 'max_samples': 'auto'}",0.760806916426513
+123,IsolationForest(t),"{'n_estimators': 400, 'max_samples': 256}",0.760806916426513
+123,IsolationForest(t),"{'n_estimators': 400, 'max_samples': 0.5}",0.7550077041602464
+123,OC-SVM(t),"{'nu': 0.02, 'gamma': 'scale'}",0.7459459459459459
+123,OC-SVM(t),"{'nu': 0.02, 'gamma': 0.2}",0.721153846153846
+123,OC-SVM(t),"{'nu': 0.05, 'gamma': 'scale'}",0.7194337194337195
+123,OC-SVM(t),"{'nu': 0.05, 'gamma': 0.2}",0.7193083573487031
+123,OC-SVM(t),"{'nu': 0.1, 'gamma': 'scale'}",0.7132867132867132
+123,OC-SVM(t),"{'nu': 0.1, 'gamma': 0.2}",0.7234927234927235
+123,Autoencoder(t),"{'hidden': (32, 16, 32)}",0.6304116312450804
+123,Autoencoder(t),"{'hidden': (64, 32, 64)}",0.6285006614315066
+123,LSTM-AE(t),{'hidden': 32},0.5497382198952879
+123,LSTM-AE(t),{'hidden': 64},0.6666666666666666
+124,IsolationForest(t),"{'n_estimators': 100, 'max_samples': 'auto'}",0.7887323943661972
+124,IsolationForest(t),"{'n_estimators': 100, 'max_samples': 256}",0.7887323943661972
+124,IsolationForest(t),"{'n_estimators': 100, 'max_samples': 0.5}",0.7882434621615367
+124,IsolationForest(t),"{'n_estimators': 200, 'max_samples': 'auto'}",0.814569536423841
+124,IsolationForest(t),"{'n_estimators': 200, 'max_samples': 256}",0.814569536423841
+124,IsolationForest(t),"{'n_estimators': 200, 'max_samples': 0.5}",0.7828542094455851
+124,IsolationForest(t),"{'n_estimators': 400, 'max_samples': 'auto'}",0.7931466778102799
+124,IsolationForest(t),"{'n_estimators': 400, 'max_samples': 256}",0.7931466778102799
+124,IsolationForest(t),"{'n_estimators': 400, 'max_samples': 0.5}",0.7704269154650834
+124,OC-SVM(t),"{'nu': 0.02, 'gamma': 'scale'}",0.7173252279635258
+124,OC-SVM(t),"{'nu': 0.02, 'gamma': 0.2}",0.7247835715723777
+124,OC-SVM(t),"{'nu': 0.05, 'gamma': 'scale'}",0.7631471667346107
+124,OC-SVM(t),"{'nu': 0.05, 'gamma': 0.2}",0.7769110764430576
+124,OC-SVM(t),"{'nu': 0.1, 'gamma': 'scale'}",0.7887323943661972
+124,OC-SVM(t),"{'nu': 0.1, 'gamma': 0.2}",0.7826086956521738
+124,Autoencoder(t),"{'hidden': (32, 16, 32)}",0.6317300451807228
+124,Autoencoder(t),"{'hidden': (64, 32, 64)}",0.6633514878838108
+124,LSTM-AE(t),{'hidden': 32},0.7796610169491525
+124,LSTM-AE(t),{'hidden': 64},0.7118644067796611
+125,IsolationForest(t),"{'n_estimators': 100, 'max_samples': 'auto'}",0.776978417266187
+125,IsolationForest(t),"{'n_estimators': 100, 'max_samples': 256}",0.776978417266187
+125,IsolationForest(t),"{'n_estimators': 100, 'max_samples': 0.5}",0.7828877005347594
+125,IsolationForest(t),"{'n_estimators': 200, 'max_samples': 'auto'}",0.7482014388489209
+125,IsolationForest(t),"{'n_estimators': 200, 'max_samples': 256}",0.7482014388489209
+125,IsolationForest(t),"{'n_estimators': 200, 'max_samples': 0.5}",0.8375089477451682
+125,IsolationForest(t),"{'n_estimators': 400, 'max_samples': 'auto'}",0.7592928377153217
+125,IsolationForest(t),"{'n_estimators': 400, 'max_samples': 256}",0.7592928377153217
+125,IsolationForest(t),"{'n_estimators': 400, 'max_samples': 0.5}",0.801357411222882
+125,OC-SVM(t),"{'nu': 0.02, 'gamma': 'scale'}",0.6451612903225806
+125,OC-SVM(t),"{'nu': 0.02, 'gamma': 0.2}",0.6343042071197411
+125,OC-SVM(t),"{'nu': 0.05, 'gamma': 'scale'}",0.6372881355932204
+125,OC-SVM(t),"{'nu': 0.05, 'gamma': 0.2}",0.6459627329192545
+125,OC-SVM(t),"{'nu': 0.1, 'gamma': 'scale'}",0.6369426751592356
+125,OC-SVM(t),"{'nu': 0.1, 'gamma': 0.2}",0.6328358208955223
+125,Autoencoder(t),"{'hidden': (32, 16, 32)}",0.6450958000253775
+125,Autoencoder(t),"{'hidden': (64, 32, 64)}",0.6945912702370267
+125,LSTM-AE(t),{'hidden': 32},0.7586206896551725
+125,LSTM-AE(t),{'hidden': 64},0.5677419354838709

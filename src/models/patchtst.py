@@ -172,13 +172,27 @@ class PatchTSTAD:
         opt = torch.optim.Adam(self.model.parameters(), lr=cfg.lr)
         lossf = nn.MSELoss()
 
+        train_mask = getattr(cfg, "train_mask", "full")
+
         def masked_loss(xb):
             x_in = xb.clone()
-            # SSL task: mask the ENTIRE load channel; predict it from
-            # weather/calendar channels (aligns train and inference)
-            x_in[:, cfg.target_idx, :] = 0.0
+            if train_mask == "full":
+                # SSL task: mask the ENTIRE load channel; predict it from
+                # weather/calendar channels (aligns train and inference)
+                x_in[:, cfg.target_idx, :] = 0.0
+                rec = self.model(x_in)
+                return lossf(rec[:, cfg.target_idx, :], xb[:, cfg.target_idx, :])
+            # "patch" ablation (Round-7 MC6): zero a random mask_ratio of
+            # non-overlapping patch_len blocks of the load channel only;
+            # loss on the masked hours (classic masked modeling)
+            B, _, T = xb.shape
+            nblk = T // cfg.patch_len
+            blk = torch.rand(B, nblk, device=xb.device) < cfg.mask_ratio
+            m = torch.zeros(B, T, dtype=torch.bool, device=xb.device)
+            m[:, :nblk * cfg.patch_len] = blk.repeat_interleave(cfg.patch_len, dim=1)
+            x_in[:, cfg.target_idx, :][m] = 0.0
             rec = self.model(x_in)
-            return lossf(rec[:, cfg.target_idx, :], xb[:, cfg.target_idx, :])
+            return lossf(rec[:, cfg.target_idx, :][m], xb[:, cfg.target_idx, :][m])
 
         n = len(Wt)
         best_val, best_state, bad = float("inf"), None, 0

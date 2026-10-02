@@ -1,5 +1,7 @@
 __pycache__/
 *.pyc
 .DS_Store
+.venv/
 data/*.csv
 data/bdg2/
+data/lead/

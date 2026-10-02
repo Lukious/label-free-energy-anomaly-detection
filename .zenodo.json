@@ -1,0 +1,15 @@
+{
+  "title": "Code, building selection and result tables for label-free energy anomaly detection on 41 BDG2 buildings",
+  "upload_type": "software",
+  "description": "Code, the deterministic 41-building BDG2 selection list and the master result tables accompanying the manuscript 'Calendar-Conditional Scoring Drives Label-Free Energy Anomaly Detection: A Leakage-Free Factorial Evaluation of Learned and Profile Backbones on 41 Measured Buildings' (submitted to the Journal of Building Engineering). The canonical pipeline (scripts/run_all_r7.sh) regenerates every number, table and figure of the manuscript from the master CSVs in results/final_r7. Raw BDG2 data are not redistributed (doi:10.5281/zenodo.3887306).",
+  "creators": [
+    {"name": "Baek, Suwhan", "affiliation": "Department of Architecture & Urban Engineering, Hanyang Cyber University", "orcid": "0000-0002-5913-4471"},
+    {"name": "Lee, Dongyeop", "affiliation": "Department of Economics, Korea University"}
+  ],
+  "license": "MIT",
+  "keywords": ["building energy", "anomaly detection", "self-supervised learning", "robust statistics", "energy waste quantification", "evaluation methodology", "smart meters", "BDG2"],
+  "related_identifiers": [
+    {"identifier": "10.5281/zenodo.3887306", "relation": "isDerivedFrom", "scheme": "doi", "resource_type": "dataset"},
+    {"identifier": "10.1038/s41597-020-00712-x", "relation": "references", "scheme": "doi"}
+  ]
+}

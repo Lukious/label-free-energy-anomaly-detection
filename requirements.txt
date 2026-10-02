@@ -1,6 +1,10 @@
+# Round-7 canonical environment (project .venv, Python 3.13.5, Apple MPS)
+matplotlib==3.11.2
 numpy==2.5.3
-pandas==3.0.6
+pandas==2.3.3
 scikit-learn==1.9.1
 scipy==1.18.1
-matplotlib==3.11.2
-torch==2.14.0
+statsmodels==0.15.0
+torch==2.14.1
+# Not needed for the canonical run; only for the optional Kaggle fetch:
+# kaggle  (BDG2 download via scripts/fetch_bdg2.py)

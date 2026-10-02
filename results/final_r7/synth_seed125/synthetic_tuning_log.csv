@@ -1,0 +1,20 @@
+seed,model,cfg,val_f1
+125,IsolationForest(t),"{'n_estimators': 100, 'max_samples': 'auto'}",0.776978417266187
+125,IsolationForest(t),"{'n_estimators': 100, 'max_samples': 256}",0.776978417266187
+125,IsolationForest(t),"{'n_estimators': 100, 'max_samples': 0.5}",0.7828877005347594
+125,IsolationForest(t),"{'n_estimators': 200, 'max_samples': 'auto'}",0.7482014388489209
+125,IsolationForest(t),"{'n_estimators': 200, 'max_samples': 256}",0.7482014388489209
+125,IsolationForest(t),"{'n_estimators': 200, 'max_samples': 0.5}",0.8375089477451682
+125,IsolationForest(t),"{'n_estimators': 400, 'max_samples': 'auto'}",0.7592928377153217
+125,IsolationForest(t),"{'n_estimators': 400, 'max_samples': 256}",0.7592928377153217
+125,IsolationForest(t),"{'n_estimators': 400, 'max_samples': 0.5}",0.801357411222882
+125,OC-SVM(t),"{'nu': 0.02, 'gamma': 'scale'}",0.6451612903225806
+125,OC-SVM(t),"{'nu': 0.02, 'gamma': 0.2}",0.6343042071197411
+125,OC-SVM(t),"{'nu': 0.05, 'gamma': 'scale'}",0.6372881355932204
+125,OC-SVM(t),"{'nu': 0.05, 'gamma': 0.2}",0.6459627329192545
+125,OC-SVM(t),"{'nu': 0.1, 'gamma': 'scale'}",0.6369426751592356
+125,OC-SVM(t),"{'nu': 0.1, 'gamma': 0.2}",0.6328358208955223
+125,Autoencoder(t),"{'hidden': (32, 16, 32)}",0.6450958000253775
+125,Autoencoder(t),"{'hidden': (64, 32, 64)}",0.6945912702370267
+125,LSTM-AE(t),{'hidden': 32},0.7586206896551725
+125,LSTM-AE(t),{'hidden': 64},0.5677419354838709

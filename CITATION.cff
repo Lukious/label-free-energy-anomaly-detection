@@ -1,0 +1,16 @@
+cff-version: 1.2.0
+message: "If you use this code or the result tables, please cite them as below."
+title: "Code, building selection and result tables for label-free energy anomaly detection on 41 BDG2 buildings"
+type: software
+authors:
+  - family-names: Baek
+    given-names: Suwhan
+    affiliation: "Department of Architecture & Urban Engineering, Hanyang Cyber University"
+    orcid: "https://orcid.org/0000-0002-5913-4471"
+  - family-names: Lee
+    given-names: Dongyeop
+    affiliation: "Department of Economics, Korea University"
+license: MIT
+repository-code: "https://github.com/Lukious/label-free-energy-anomaly-detection"
+version: 1.0.0
+date-released: 2026-10-02

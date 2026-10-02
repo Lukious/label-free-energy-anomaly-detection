@@ -103,16 +103,24 @@ def table_waste_ops():
         n=("building_id", lambda x: len(set(x)))).reset_index()
     g["bias"] = (g["est"] - g["true"]) / g["true"]
     g["gross"] = g[["matched", "fadd", "miss"]].abs().sum(axis=1)
-    lines = [r"\begin{tabular}{lrrrrrr}", r"\toprule",
-             r"Model & total bias & matched err (kWh) & false add (kWh) & missed (kWh) & gross err (kWh) & $n$ bldgs \\",
+    # per-building gross: absolute values taken at the building level FIRST
+    # (no cancellation within or across buildings)
+    pb = (d.groupby(["model", "building_id"])[["matched_err_kwh", "false_add_kwh",
+                                               "missed_kwh"]].sum().abs().sum(axis=1)
+          .groupby("model").sum())
+    g["gross_pb"] = g["model"].map(pb)
+    lines = [r"\begin{tabular}{lrrrrrrr}", r"\toprule",
+             r"Model & total bias & matched err (kWh) & false add (kWh) & missed (kWh) & gross err (kWh) & per-bldg gross (kWh) & $n$ bldgs \\",
              r"\midrule"]
     for _, r in g.iterrows():
         lines.append(f"{NICE.get(r['model'], r['model'])} & {r['bias']:+.1%}".replace("%", r"\%") + " & "
                      f"{r['matched']:+.0f} & {r['fadd']:+.0f} & "
-                     f"$-${r['miss']:.0f} & {r['gross']:.0f} & {int(r['n'])} \\\\")
+                     f"$-${r['miss']:.0f} & {r['gross']:.0f} & {r['gross_pb']:.0f} & {int(r['n'])} \\\\")
     lines += [r"\bottomrule", r"\end{tabular}",
               "%% Eq.(6): est-true == matched_err + false_add - missed (kWh).",
-              "%% gross = |matched| + |false add| + |missed| (no cancellation)."]
+              "%% gross = |matched| + |false add| + |missed| (no cancellation).",
+              "%% per-bldg gross = sum_b (|matched_b| + |false_add_b| + |missed_b|):",
+              "%% absolute values taken per building (no cross-building cancellation)."]
     open(os.path.join(TAB, "table_waste_ops.tex"), "w").write("\n".join(lines))
 
 
@@ -120,23 +128,26 @@ def table_prescription():
     d = load("prescription.csv")
     ch = d[d["chosen"]]
     # per building |err| quartiles for the chosen rule (ours = PatchTST HoW)
-    lines = [r"\begin{tabular}{lrrrrrr}", r"\toprule",
-             r"Model (rule chosen on validation) & bias & matched err & false add & missed & gross err & window cov. \\",
+    lines = [r"\begin{tabular}{lrrrrrrr}", r"\toprule",
+             r"Model (rule chosen on validation) & bias & matched err & false add & missed & gross err & per-bldg gross & window cov. \\",
              r"\midrule"]
     for m, g in ch.groupby("model"):
         rule = g["mode"].iloc[0]
         tot_t, tot_e = g["true_kwh"].sum(), g["est_kwh"].sum()
-        gross = g[["matched_err_kwh", "false_add_kwh", "missed_kwh"]].abs().sum().sum()
+        gross = g[["matched_err_kwh", "false_add_kwh", "missed_kwh"]].sum().abs().sum()
+        gross_pb = (g.groupby("building_id")[["matched_err_kwh", "false_add_kwh",
+                                              "missed_kwh"]].sum().abs().sum(axis=1).sum())
         lines.append(
             f"{NICE.get(m, m)} [{rule}] & " + f"{(tot_e - tot_t) / tot_t:+.1%}".replace("%", r"\%") + " & "
             f"{g['matched_err_kwh'].sum():+.0f} & {g['false_add_kwh'].sum():+.0f} & "
-            f"$-${g['missed_kwh'].sum():.0f} & {gross:.0f} & "
+            f"$-${g['missed_kwh'].sum():.0f} & {gross:.0f} & {gross_pb:.0f} & "
             f"{g['window_cov'].mean():.1%}".replace("%", r"\%") + " \\\\")
     lines += [r"\bottomrule", r"\end{tabular}",
               "%% Post-extension Eq.(6) decomposition; rule selected on "
               "validation injection events, never on test.",
               "%% gross = |matched| + |false add| + |missed|: compare with the",
-              "%% same column of Table waste-ops (before extension)."]
+              "%% same column of Table waste-ops (before extension).",
+              "%% per-bldg gross = sum_b (|matched_b| + |false_add_b| + |missed_b|)."]
     open(os.path.join(TAB, "table_prescription.tex"), "w").write("\n".join(lines))
 
 
@@ -203,17 +214,20 @@ def table_synthetic():
 def table_waste_oracle():
     """Stage (a): oracle-window bias by estimator variant, kWh-weighted."""
     d = load("waste_oracle.csv")
+    d["clip_abs_err"] = (d["clip_kwh"] - d["true_kwh"]).abs() / d["true_kwh"]
+    d.loc[d["true_kwh"] <= 0, "clip_abs_err"] = np.nan
     g = d.groupby("model").agg(true=("true_kwh", "sum"),
                                clip=("clip_kwh", "sum"),
                                signed=("signed_kwh", "sum"),
-                               floor=("floor_kwh", "sum")).reset_index()
-    lines = [r"\begin{tabular}{lccc}", r"\toprule",
-             r"Estimator & signed & clip & floor-corrected \\",
+                               floor=("floor_kwh", "sum"),
+                               med=("clip_abs_err", "median")).reset_index()
+    lines = [r"\begin{tabular}{lcccc}", r"\toprule",
+             r"Estimator & signed & clip & floor-corrected & per-event med.\ $|$err$|$ \\",
              r"\midrule"]
     for _, r in g.iterrows():
         b = lambda v: f"{(r[v] - r['true']) / r['true']:+.1%}".replace("%", r"\%")
         lines.append(f"{NICE.get(r['model'], r['model'])} & "
-                     f"{b('signed')} & {b('clip')} & {b('floor')} \\\\")
+                     f"{b('signed')} & {b('clip')} & {b('floor')} & {r['med']:.2f} \\\\")
     lines += [r"\bottomrule", r"\end{tabular}",
               "%% Bias relative to total true injected excess kWh (kWh-weighted)."]
     open(os.path.join(TAB, "table_waste_oracle.tex"), "w").write("\n".join(lines))
@@ -276,6 +290,16 @@ def write_numbers():
 
     gross_before = gross(ops)
     gross_after = gross(ch[ch["chosen"]])
+
+    # per-building gross (|terms| taken per building first), before/after, MWh
+    def gross_pb(d):
+        g = (d.groupby(["model", "building_id"])[["matched_err_kwh", "false_add_kwh",
+                                                  "missed_kwh"]].sum().abs().sum(axis=1)
+             .groupby("model").sum())
+        return (g / 1e6).to_dict()
+
+    gpb_before = gross_pb(ops)
+    gpb_after = gross_pb(ch[ch["chosen"]])
 
     # per-building |bias| quartiles BEFORE extension (ours)
     ops_pt = ops[ops["model"] == "PatchTST-SSL(HoW-cond)"]
@@ -370,6 +394,15 @@ def write_numbers():
         "GrossAfterHOW": float(gross_after["HOW-profile(HoW-cond)"]),
         "GrossBeforeTOWT": float(gross_before["TOWT(HoW-cond)"]),
         "GrossAfterTOWT": float(gross_after["TOWT(HoW-cond)"]),
+        # G1: per-building gross (no cross-building cancellation), MWh
+        "GrossPbBeforePatchTST": float(gpb_before["PatchTST-SSL(HoW-cond)"]),
+        "GrossPbAfterPatchTST": float(gpb_after["PatchTST-SSL(HoW-cond)"]),
+        "GrossPbReductionPct": float(100 * (1 - gpb_after["PatchTST-SSL(HoW-cond)"]
+                                            / gpb_before["PatchTST-SSL(HoW-cond)"])),
+        "GrossPbBeforeHOW": float(gpb_before["HOW-profile(HoW-cond)"]),
+        "GrossPbAfterHOW": float(gpb_after["HOW-profile(HoW-cond)"]),
+        "GrossPbBeforeTOWT": float(gpb_before["TOWT(HoW-cond)"]),
+        "GrossPbAfterTOWT": float(gpb_after["TOWT(HoW-cond)"]),
         # per-building |bias| quartiles BEFORE extension (ours)
         "ErrQOneBefore": float(pb0.quantile(0.25)),
         "ErrQMedBefore": float(pb0.median()),
